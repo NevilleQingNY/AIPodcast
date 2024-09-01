@@ -9,6 +9,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'img.clerk.com'
       },
+      {
+        protocol: 'https',
+        hostname: 'nautical-badger-186.convex.cloud'
+      },
     ]
   }
 };

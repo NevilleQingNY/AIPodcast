@@ -15,7 +15,9 @@ import { cn } from '@/lib/utils';
 
 const RightSidebar = () => {
   const { user } = useUser();
+  
   const topPodcasters = useQuery(api.users.getTopUserByPodcastCount);
+  
   const router = useRouter();
 
   const { audio } = useAudio();

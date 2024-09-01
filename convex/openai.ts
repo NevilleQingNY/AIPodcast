@@ -18,8 +18,39 @@ export const generateAudioAction = action({
     });
 
     const buffer = await mp3.arrayBuffer();
-    
+
     return buffer;
+  },
+});
+
+export const generatePodcastContentAction = action({
+  args: {
+    topic: v.string()
+  },
+  handler: async (ctx, { topic }) => {
+    const prompt = `Generate a podcast script about "${topic}".
+
+The script should flow naturally as a single, cohesive piece of text, without section headers or speaker labels. Include the following elements in order:
+
+1. A brief introduction and greeting
+2. An overview of the topic
+3. The main content, covering 3-5 key points
+4. A conclusion summarizing the main ideas
+5. An outro with a call to action for listeners
+
+Present the content in a conversational or narrative format that sounds natural and engaging, as if it's being spoken by a single host. Avoid using any formatting markers or labels within the text.`;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a professional podcast script writer." },
+        { role: "user", content: prompt }
+      ],
+    });
+
+    const content = stream?.choices?.[0]?.message?.content || '';
+
+    return content
   },
 });
 
@@ -36,7 +67,7 @@ export const generateThumbnailAction = action({
 
     const url = response.data[0].url;
 
-    if(!url) {
+    if (!url) {
       throw new Error('Error generating thumbnail');
     }
 

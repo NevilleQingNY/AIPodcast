@@ -100,7 +100,7 @@ const CreatePodcast = () => {
       console.log(error);
       toast({
         title: 'Error',
-        variant: 'destructive',
+        variant: 'destructive'
       })
       setIsSubmitting(false);
     }

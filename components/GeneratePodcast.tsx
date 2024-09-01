@@ -1,5 +1,5 @@
 import { GeneratePodcastProps } from '@/types'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Label } from './ui/label'
 import { Textarea } from './ui/textarea'
 import { Button } from './ui/button'
@@ -12,30 +12,66 @@ import { useToast } from "@/components/ui/use-toast"
 import { useUploadFiles } from '@xixixao/uploadstuff/react';
 
 const useGeneratePodcast = ({
-  setAudio, voiceType, voicePrompt, setAudioStorageId
+  setAudio, voiceType, voicePrompt, setAudioStorageId, setVoicePrompt
 }: GeneratePodcastProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAudioGenerating, setIsAudioGenerating] = useState(false)
   const { toast } = useToast()
 
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const { startUpload } = useUploadFiles(generateUploadUrl)
 
   const getPodcastAudio = useAction(api.openai.generateAudioAction)
+  const generateContent = useAction(api.openai.generatePodcastContentAction);
+
 
   const getAudioUrl = useMutation(api.podcasts.getUrl);
 
-  const generatePodcast = async () => {
-    setIsGenerating(true);
-    setAudio('');
-
-    if(!voicePrompt) {
-      toast({
-        title: "Please provide a voiceType to generate a podcast",
-      })
-      return setIsGenerating(false);
-    }
+  const generatePodcast = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsGenerating(true)
 
     try {
+      if (!voiceType && !voicePrompt) {
+        toast({
+          title: "Please provide a some script to generate a podcast",
+        })
+        return setIsGenerating(false);
+      }
+
+      setAudio('');
+      const res = await generateContent({ topic: voicePrompt });
+      setVoicePrompt(res)
+
+      toast({
+        title: "Podcast generated successfully",
+      })
+
+      setVoicePrompt(res)
+    } catch (error) {
+      toast({
+        title: "Error creating a content",
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+
+  }
+
+  const generateAudio = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsAudioGenerating(true)
+
+    try {
+      setAudio('');
+      if (!voiceType && !voicePrompt) {
+        toast({
+          title: "Please provide a voiceType or script to generate a podcast",
+        })
+        return setIsAudioGenerating(false);
+      }
+
       const response = await getPodcastAudio({
         voice: voiceType,
         input: voicePrompt
@@ -47,31 +83,31 @@ const useGeneratePodcast = ({
 
       const uploaded = await startUpload([file]);
       const storageId = (uploaded[0].response as any).storageId;
+      setAudioStorageId(storageId)
 
-      setAudioStorageId(storageId);
+      setIsAudioGenerating(storageId);
 
       const audioUrl = await getAudioUrl({ storageId });
       setAudio(audioUrl!);
-      setIsGenerating(false);
       toast({
         title: "Podcast generated successfully",
       })
+
     } catch (error) {
-      console.log('Error generating podcast', error)
       toast({
-        title: "Error creating a podcast",
+        title: "Error creating a content",
         variant: 'destructive',
       })
-      setIsGenerating(false);
+    } finally {
+      setIsAudioGenerating(false)
     }
-    
   }
 
-  return { isGenerating, generatePodcast }
+  return { isGenerating, generatePodcast, generateAudio, isAudioGenerating }
 }
 
 const GeneratePodcast = (props: GeneratePodcastProps) => {
-  const { isGenerating, generatePodcast } = useGeneratePodcast(props);
+  const { isGenerating, generatePodcast, generateAudio, isAudioGenerating } = useGeneratePodcast(props);
 
   return (
     <div>
@@ -79,7 +115,7 @@ const GeneratePodcast = (props: GeneratePodcastProps) => {
         <Label className="text-16 font-bold text-white-1">
           AI Prompt to generate Podcast
         </Label>
-        <Textarea 
+        <Textarea
           className="input-class font-light focus-visible:ring-offset-orange-1"
           placeholder='Provide text to generate audio'
           rows={5}
@@ -87,20 +123,30 @@ const GeneratePodcast = (props: GeneratePodcastProps) => {
           onChange={(e) => props.setVoicePrompt(e.target.value)}
         />
       </div>
-      <div className="mt-5 w-full max-w-[200px]">
-      <Button type="submit" className="text-16 bg-orange-1 py-4 font-bold text-white-1" onClick={generatePodcast}>
-        {isGenerating ? (
-          <>
-            Generating
-            <Loader size={20} className="animate-spin ml-2" />
-          </>
-        ) : (
-          'Generate'
-        )}
-      </Button>
+      <div className="flex gap-8 mt-5 w-full max-w-[200px]">
+        <Button disabled={isGenerating || isAudioGenerating} type="submit" className="text-16 bg-orange-1 py-4 font-bold text-white-1" onClick={generatePodcast}>
+          {isGenerating ? (
+            <>
+              Generating
+              <Loader size={20} className="animate-spin ml-2" />
+            </>
+          ) : (
+            'AI Generate'
+          )}
+        </Button>
+        <Button disabled={isGenerating || isAudioGenerating} type="submit" className="text-16 bg-green-600 py-4 font-bold text-white-1" onClick={generateAudio}>
+          {isAudioGenerating ? (
+            <>
+              Generating
+              <Loader size={20} className="animate-spin ml-2" />
+            </>
+          ) : (
+            'Generate Audio'
+          )}
+        </Button>
       </div>
       {props.audio && (
-        <audio 
+        <audio
           controls
           src={props.audio}
           autoPlay

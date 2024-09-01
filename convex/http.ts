@@ -49,6 +49,7 @@ http.route({
   handler: handleClerkWebhook,
 });
 
+
 const validateRequest = async (
   req: Request
 ): Promise<WebhookEvent | undefined> => {
